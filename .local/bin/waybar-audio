@@ -1,0 +1,51 @@
+#!/bin/sh
+
+set -eu
+
+sink='@DEFAULT_AUDIO_SINK@'
+output=$(wpctl get-volume "$sink" 2>/dev/null || true)
+
+if [ -z "$output" ]; then
+    printf '{"text":"?","tooltip":"Audio unavailable","class":"unavailable"}\n'
+    exit 0
+fi
+
+volume=$(printf '%s\n' "$output" | awk '{ printf "%.0f", $2 * 100 }')
+
+# Prevent negative values, but allow values above 99%.
+if [ "$volume" -lt 0 ]; then
+    volume=0
+fi
+
+if [ "$volume" -ge 100 ]; then
+    # Above 99%: show only the number with a black background.
+    text="$volume"
+    class='over-limit'
+    tooltip="Volume: ${volume}%"
+elif printf '%s\n' "$output" | grep -q '\[MUTED\]'; then
+    icon='󰖁'
+    text="$icon"
+    class='muted'
+    tooltip="Muted (${volume}%)"
+else
+    # One color level for every 5%.
+    level=$((volume / 5))
+    color_class=$(printf 'value-%02d' "$level")
+
+    if [ "$volume" -le 20 ]; then
+        icon=''
+    elif [ "$volume" -le 40 ]; then
+        icon=''
+    elif [ "$volume" -le 70 ]; then
+        icon='󰖀'
+    else
+        icon=''
+    fi
+
+    text="$icon"
+    class="$color_class"
+    tooltip="Volume: ${volume}%"
+fi
+
+printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \
+    "$text" "$tooltip" "$class"

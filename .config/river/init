@@ -1,0 +1,243 @@
+#!/bin/sh
+
+# Run River with a DBus session when you are not using systemd:
+#   dbus-run-session river
+
+# Keyboard layouts: Alt+Shift switches between English and Romanian
+riverctl keyboard-layout \
+    -options "grp:alt_shift_toggle" \
+    "us,ro"
+
+# Clipboard manager
+riverctl spawn 'wl-paste -t text --watch clipman store --no-persist'
+
+# Cursor
+riverctl xcursor-theme Adwaita 20
+riverctl hide-cursor timeout 8000
+
+# Wallpaper
+riverctl spawn 'swaybg -i "$HOME/.local/share/bg" -m fill'
+
+# Idle and screen locking
+riverctl spawn "$HOME/.local/bin/river-idle"
+
+# Audio services
+# River must itself be started with: dbus-run-session river
+riverctl spawn 'pipewire'
+riverctl spawn 'wireplumber'
+riverctl spawn 'pipewire-pulse'
+
+# Start Waybar after PipeWire and WirePlumber
+riverctl spawn 'waybar'
+
+# Start the layout generator
+riverctl spawn 'rivertile -view-padding 6 -outer-padding 6'
+riverctl default-layout rivertile
+
+
+# Applications and launchers
+
+# Super+Shift+Return: terminal
+riverctl map normal Super+Shift Return spawn 'alacritty'
+
+# Super+D: Fuzzel application launcher
+riverctl map normal Super D spawn 'fuzzel'
+
+# Super+F: Bemenu launcher
+riverctl map normal Super F spawn 'bemenu-run'
+
+
+# Window management
+
+# Super+Q: close the focused view
+riverctl map normal Super Q close
+
+# Super+Shift+C: close the focused view
+riverctl map normal Super+Shift C close
+
+# Super+Shift+E: exit River
+riverctl map normal Super+Shift E exit
+
+# Super+J/K: focus the next/previous view
+riverctl map normal Super J focus-view next
+riverctl map normal Super K focus-view previous
+
+# Super+Shift+J/K: swap with the next/previous view
+riverctl map normal Super+Shift J swap next
+riverctl map normal Super+Shift K swap previous
+
+# Super+Period/Comma: focus the next/previous output
+riverctl map normal Super Period focus-output next
+riverctl map normal Super Comma focus-output previous
+
+# Super+Shift+Period/Comma: send the view to the next/previous output
+riverctl map normal Super+Shift Period send-to-output next
+riverctl map normal Super+Shift Comma send-to-output previous
+
+# Super+Return: promote the focused view
+riverctl map normal Super Return zoom
+
+# Super+Space: toggle floating
+riverctl map normal Super Space toggle-float
+
+# Super+Shift+F: toggle fullscreen
+riverctl map normal Super+Shift F toggle-fullscreen
+
+
+# Rivertile adjustments
+
+# Super+H/L: decrease/increase the main ratio
+riverctl map normal Super H send-layout-cmd rivertile "main-ratio -0.05"
+riverctl map normal Super L send-layout-cmd rivertile "main-ratio +0.05"
+
+# Super+Shift+H/L: change the main count
+# (kept consistent with H/L convention)
+riverctl map normal Super+Shift H send-layout-cmd rivertile "main-count -1"
+riverctl map normal Super+Shift L send-layout-cmd rivertile "main-count +1"
+
+# Super+Alt+H/J/K/L: move views
+riverctl map normal Super+Alt H move left 100
+riverctl map normal Super+Alt J move down 100
+riverctl map normal Super+Alt K move up 100
+riverctl map normal Super+Alt L move right 100
+
+# Super+Alt+Control+H/J/K/L: snap views to screen edges
+riverctl map normal Super+Alt+Control H snap left
+riverctl map normal Super+Alt+Control J snap down
+riverctl map normal Super+Alt+Control K snap up
+riverctl map normal Super+Alt+Control L snap right
+
+# Super+Alt+Shift+H/J/K/L: resize views
+riverctl map normal Super+Alt+Shift H resize horizontal -100
+riverctl map normal Super+Alt+Shift J resize vertical 100
+riverctl map normal Super+Alt+Shift K resize vertical -100
+riverctl map normal Super+Alt+Shift L resize horizontal 100
+
+
+# Mouse bindings
+riverctl map-pointer normal Super BTN_LEFT move-view
+riverctl map-pointer normal Super BTN_RIGHT resize-view
+riverctl map-pointer normal Super BTN_MIDDLE toggle-float
+
+
+# Tags
+
+for i in $(seq 1 9)
+do
+    tags=$((1 << (i - 1)))
+
+    # Super+[1-9]: focus tag [1-9]
+    riverctl map normal Super "$i" set-focused-tags "$tags"
+
+    # Super+Shift+[1-9]: tag the focused view with tag [1-9]
+    riverctl map normal Super+Shift "$i" set-view-tags "$tags"
+
+    # Super+Control+[1-9]: toggle focus of tag [1-9]
+    riverctl map normal Super+Control "$i" toggle-focused-tags "$tags"
+
+    # Super+Shift+Control+[1-9]: toggle tag [1-9] on the focused view
+    riverctl map normal Super+Shift+Control "$i" toggle-view-tags "$tags"
+done
+
+# Super+0: focus all tags
+# Super+Shift+0: tag the focused view with all tags
+all_tags=$(((1 << 32) - 1))
+
+riverctl map normal Super 0 set-focused-tags "$all_tags"
+riverctl map normal Super+Shift 0 set-view-tags "$all_tags"
+
+
+# Layout orientation
+
+riverctl map normal Super Up \
+    send-layout-cmd rivertile "main-location top"
+
+riverctl map normal Super Right \
+    send-layout-cmd rivertile "main-location right"
+
+riverctl map normal Super Down \
+    send-layout-cmd rivertile "main-location bottom"
+
+riverctl map normal Super Left \
+    send-layout-cmd rivertile "main-location left"
+
+
+# Passthrough mode
+
+riverctl declare-mode passthrough
+
+riverctl map normal Super F11 enter-mode passthrough
+riverctl map passthrough Super F11 enter-mode normal
+
+
+# Audio, media, and brightness keys
+
+for mode in normal locked
+do
+    # Eject optical drive
+    riverctl map "$mode" None XF86Eject \
+        spawn 'eject -T'
+
+    # Volume
+    riverctl map "$mode" None XF86AudioRaiseVolume \
+        spawn 'wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+'
+
+    riverctl map "$mode" None XF86AudioLowerVolume \
+        spawn 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-'
+
+    riverctl map "$mode" None XF86AudioMute \
+        spawn 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle'
+
+    # Microphone mute
+    riverctl map "$mode" None XF86AudioMicMute \
+        spawn 'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle'
+
+    # MPRIS media controls
+    riverctl map "$mode" None XF86AudioMedia \
+        spawn 'playerctl play-pause'
+
+    riverctl map "$mode" None XF86AudioPlay \
+        spawn 'playerctl play-pause'
+
+    riverctl map "$mode" None XF86AudioPrev \
+        spawn 'playerctl previous'
+
+    riverctl map "$mode" None XF86AudioNext \
+        spawn 'playerctl next'
+
+    # Brightness
+    riverctl map "$mode" None XF86MonBrightnessUp \
+        spawn 'brightnessctl set +5%'
+
+    riverctl map "$mode" None XF86MonBrightnessDown \
+        spawn 'brightnessctl set 5%-'
+done
+
+
+# Screenshots
+
+# Print: full-screen screenshot
+riverctl map normal None Print spawn \
+    'mkdir -p "$HOME/Pictures/Screenshots"; grim "$HOME/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png"'
+
+# Super+Print: select a region with slurp, then screenshot it
+# riverctl map normal Super Print spawn \
+#     'mkdir -p "$HOME/Pictures/Screenshots"; grim -g "$(slurp)" "$HOME/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png"'
+
+
+# Appearance
+
+riverctl background-color 0x002b36
+riverctl border-color-focused 0x93a1a1
+riverctl border-color-unfocused 0x586e75
+
+riverctl set-repeat 50 300
+
+
+# Window rules
+
+# Start matching views floating
+riverctl rule-add -app-id 'float*' -title 'foo' float
+
+# Enable client-side decorations for app-id "bar"
+riverctl rule-add -app-id "bar" csd

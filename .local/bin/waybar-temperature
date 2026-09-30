@@ -1,0 +1,35 @@
+#!/bin/sh
+
+sensor='/sys/class/hwmon/hwmon4/temp3_input'
+
+raw=$(cat "$sensor" 2>/dev/null || true)
+
+if [ -z "$raw" ]; then
+    printf '{"text":"?","tooltip":"Temperature unavailable","class":"unavailable"}\n'
+    exit 0
+fi
+
+temperature=$(awk '{ printf "%.0f", $1 / 1000 }' "$sensor")
+
+if [ "$temperature" -lt 32 ]; then
+    icon=''
+    class='value-0'
+elif [ "$temperature" -lt 44 ]; then
+    icon=''
+    class='value-1'
+elif [ "$temperature" -lt 56 ]; then
+    icon=''
+    class='value-2'
+elif [ "$temperature" -lt 68 ]; then
+    icon=''
+    class='value-3'
+elif [ "$temperature" -lt 80 ]; then
+    icon=''
+    class='value-4'
+else
+    icon=''
+    class='value-5'
+fi
+
+printf '{"text":"%s%s","tooltip":"Temperature: %s°C","class":"%s"}\n' \
+    "$icon" "$temperature" "$temperature" "$class"

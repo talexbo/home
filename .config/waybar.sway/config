@@ -1,0 +1,28 @@
+{
+
+"output": "LVDS-1",
+"include": "~/.config/waybar/config-global",
+"position": "left", 
+"width": 42,
+"modules-right": [
+			"sway/workspaces",
+			"sway/language"
+			
+],
+
+"modules-center": [ 
+			"sway/window"
+],
+
+"modules-left": [
+                    	"clock",
+			"backlight",
+			"temperature",
+			"memory",
+			"cpu",
+			"wireplumber",
+			"idle_inhibitor",
+			"tray"
+],
+
+}
